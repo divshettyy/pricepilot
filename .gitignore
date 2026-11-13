@@ -1,3 +1,15 @@
 .DS_Store
 *.log
 node_modules/
+
+# env files (no env vars are used yet, but keep this guard for future tooling)
+.env
+.env.*
+!.env.example
+
+# Chrome extension packaging artifacts (never commit a signing key)
+*.pem
+*.crx
+*.zip
+dist/
+build/

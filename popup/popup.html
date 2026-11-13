@@ -6,49 +6,94 @@
 <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <header class="header">
-    <h1>PricePilot</h1>
-    <p class="subtitle">Compare tracked items, pick the best deal</p>
+  <header class="top">
+    <div>
+      <h1>PricePilot</h1>
+      <p class="sub">Compare, watch prices, pick the best deal</p>
+    </div>
+    <span class="count" id="itemCount"></span>
   </header>
 
-  <section class="weights-panel">
-    <div class="slider-row">
-      <label for="wPrice">Price importance</label>
-      <input type="range" id="wPrice" min="0" max="100" step="1" />
-      <span class="slider-value" id="wPriceVal">0</span>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-tab="compare" id="tab-compare">Compare</button>
+    <button class="tab" role="tab" data-tab="watch" id="tab-watch">Watchlist</button>
+    <button class="tab" role="tab" data-tab="food" id="tab-food">Food</button>
+    <button class="tab" role="tab" data-tab="settings" id="tab-settings">Settings</button>
+  </nav>
+
+  <section class="pane" id="pane-compare">
+    <div class="toolbar">
+      <button id="compareBtn" class="btn" disabled>Compare selected</button>
+      <span class="hint" id="selHint">Tick 2 or more items</span>
     </div>
-    <div class="slider-row">
-      <label for="wRating">Rating importance</label>
-      <input type="range" id="wRating" min="0" max="100" step="1" />
-      <span class="slider-value" id="wRatingVal">0</span>
-    </div>
-    <div class="slider-row">
-      <label for="wDiscount">Discount importance</label>
-      <input type="range" id="wDiscount" min="0" max="100" step="1" />
-      <span class="slider-value" id="wDiscountVal">0</span>
-    </div>
-    <div class="slider-row">
-      <label for="wDelivery">Delivery-fee importance</label>
-      <input type="range" id="wDelivery" min="0" max="100" step="1" />
-      <span class="slider-value" id="wDeliveryVal">0</span>
-    </div>
-    <button id="resetWeightsBtn" class="btn btn-secondary">Reset to defaults</button>
+    <div id="itemList" class="list"></div>
+    <div id="resultPanel" class="result" hidden></div>
   </section>
 
-  <section class="toolbar">
-    <button id="compareBtn" class="btn btn-primary" disabled>Compare selected</button>
-    <button id="clearAllBtn" class="btn btn-danger">Clear all</button>
-    <span id="itemCount" class="item-count">0 items tracked</span>
+  <section class="pane" id="pane-watch" hidden>
+    <div id="watchList" class="list"></div>
   </section>
 
-  <section id="itemList" class="item-list"></section>
+  <section class="pane" id="pane-food" hidden>
+    <div id="foodPairs"></div>
+    <div id="foodUnmatched"></div>
+  </section>
 
-  <section id="resultPanel" class="result-panel" hidden>
-    <h2>Comparison Result</h2>
-    <div id="resultContent"></div>
+  <section class="pane" id="pane-settings" hidden>
+    <div class="group">
+      <h2>How much each factor matters</h2>
+      <div class="slider-row"><label for="w-price">Price</label><input type="range" id="w-price" min="0" max="100" /><span id="v-price"></span></div>
+      <div class="slider-row"><label for="w-rating">Rating</label><input type="range" id="w-rating" min="0" max="100" /><span id="v-rating"></span></div>
+      <div class="slider-row"><label for="w-discount">Discount</label><input type="range" id="w-discount" min="0" max="100" /><span id="v-discount"></span></div>
+      <div class="slider-row"><label for="w-delivery">Delivery fee</label><input type="range" id="w-delivery" min="0" max="100" /><span id="v-delivery"></span></div>
+      <button id="resetWeights" class="btn ghost small">Reset to defaults</button>
+    </div>
+
+    <div class="group">
+      <h2>Your cards</h2>
+      <p class="hint">Used to compute your net price after bank offers. Stored only in your browser.</p>
+      <div class="card-add">
+        <select id="cardBank" aria-label="Bank"></select>
+        <select id="cardType" aria-label="Card type">
+          <option value="credit">Credit</option>
+          <option value="debit">Debit</option>
+        </select>
+        <button id="addCard" class="btn small">Add</button>
+      </div>
+      <div id="cardList" class="chips"></div>
+    </div>
+
+    <div class="group">
+      <h2>Alerts &amp; panel</h2>
+      <label class="toggle"><input type="checkbox" id="alertsEnabled" /> Price-drop notifications</label>
+      <div class="slider-row">
+        <label for="checkInterval">Check every</label>
+        <select id="checkInterval">
+          <option value="3">3 hours</option>
+          <option value="6">6 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24">24 hours</option>
+        </select>
+      </div>
+      <label class="toggle"><input type="checkbox" id="overlayEnabled" /> Show panel on store pages</label>
+    </div>
+
+    <div class="group">
+      <h2>Your data</h2>
+      <div class="toolbar">
+        <button id="exportData" class="btn ghost small">Export data</button>
+        <button id="clearData" class="btn danger small">Clear all data</button>
+      </div>
+      <p class="privacy">PricePilot is local-only. It talks only to Amazon, Flipkart, Zomato and Swiggy, sends no telemetry, adds no affiliate tags and never touches your cookies.</p>
+    </div>
   </section>
 
   <script src="../lib/scoring.js"></script>
+  <script src="../lib/history.js"></script>
+  <script src="../lib/offers.js"></script>
+  <script src="../lib/reviews.js"></script>
+  <script src="../lib/unitprice.js"></script>
+  <script src="../lib/food.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

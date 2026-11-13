@@ -1,31 +1,71 @@
 # PricePilot
 
-Chrome (MV3) extension that tracks price, rating, discount and delivery fee across **Amazon, Flipkart, Zomato, Swiggy** while you browse, and recommends the best pick with a transparent weighted score — the same job as Buy Hatke, but local-only (no account, no server, nothing leaves your browser).
+A local-only Chrome (Manifest V3) extension that tracks price, rating, discount and delivery fee across **Amazon, Flipkart, Zomato and Swiggy** while you browse, and recommends the best pick with a transparent, weighted score. Same job as apps like Buy Hatke — but everything stays in your browser: no account, no server, no telemetry, nothing leaves the four store domains it talks to.
 
-## How it works
+## Features
 
-- Content scripts (`content/amazon.js`, `content/flipkart.js`, `content/zomato.js`, `content/swiggy.js`) run on matching pages, extract `{title, price, rating, discountPct, deliveryFee}` and upsert into `chrome.storage.local.trackedItems` (deduped by canonical URL, capped at 200 items).
-  - Amazon/Flipkart use stable DOM selectors with a text-regex fallback.
-  - Zomato/Swiggy use heuristic text-pattern scanning instead of CSS selectors, since both are React SPAs with randomized/minified class names that break selectors on every deploy. This is best-effort and may need retuning if a site redesigns.
-- `background.js` keeps the toolbar badge in sync with the tracked-item count.
-- Click the toolbar icon to open the popup: see all tracked items, tick 2+ to compare, adjust weight sliders (price / rating / discount / delivery importance), and get a ranked "Best Pick" with a score breakdown.
-- `lib/scoring.js` holds the scoring function (min-max normalized price/delivery, rating/5, discount %, weighted sum) — read it if you want to see exactly how "best" is computed, no black box.
+- **Auto-tracking** — content scripts on Amazon/Flipkart/Zomato/Swiggy pages extract `{title, price, rating, discountPct, deliveryFee}` and store it locally, deduped by canonical URL (capped at 200 items).
+- **Weighted "Best Pick" scoring** (`lib/scoring.js`) — min-max normalized price/delivery, rating/5, discount %, combined via sliders you control (price / rating / discount / delivery importance). No black box — read the function yourself.
+- **Price history & deal verdicts** (`lib/history.js`) — local timeseries per URL, used to flag a current price as a genuine deal vs. a fake "discount" off an inflated MRP.
+- **Price-drop watchlist & alerts** (`background.js`) — set a target price per item, get a `chrome.notifications` alert when it's hit or when the price drops at all.
+- **Card-offer net price** (`lib/offers.js`) — parses Indian bank/card offer text (instant discount, cashback, flat-off) against the cards you've saved in Settings and computes the real net price.
+- **Review-trust heuristics** (`lib/reviews.js`) — volume-aware (Bayesian-adjusted) rating plus labeled authenticity flags — heuristics, not fraud detection, meant to tell you where to look.
+- **Unit-price normalization** (`lib/unitprice.js`) — parses pack size out of the title and computes price-per-standard-unit so differently-sized packs are comparable.
+- **Cross-store lookup** (`lib/crossstore.js`, `background.js`) — service-worker-side search of the *other* store domains for a matching item, so you can compare across sites without manually re-searching.
+- **Zomato vs Swiggy compare** (`lib/food.js`) — restaurant matching and cart-bill parsing across both food apps, including delivery fee and platform/GST charges.
+- **On-page overlay** (`content/overlay.js`) — a Shadow-DOM panel injected into the page itself, so verdicts show up without opening the popup.
 
-## Install (unpacked, for now)
+Amazon/Flipkart extraction uses stable DOM selectors with a text-regex fallback. Zomato/Swiggy use heuristic text-pattern scanning instead of CSS selectors, since both are React SPAs with randomized/minified class names that break selectors on every deploy — best-effort, and may need retuning after a site redesign.
 
-1. `chrome://extensions` → enable **Developer mode**.
-2. **Load unpacked** → select this folder (`~/pricepilot`).
+## Tech stack
+
+- Vanilla JavaScript (classic scripts, no build step, no bundler, no `import`/`export`) — see `CONTRACT.md` for the shared-globals pattern every file follows.
+- Chrome Extension **Manifest V3**: a service worker (`background.js`), content scripts per site, and a popup UI (`popup/`).
+- Storage: `chrome.storage.local` (tracked items, price history, watchlist, cross-store cache) and `chrome.storage.sync` (weights, settings) — no external database, no backend.
+- No third-party npm dependencies.
+
+## Prerequisites
+
+- A Chromium-based browser (Chrome, Edge, Brave, etc.) with Developer mode support for unpacked extensions.
+- No Node.js, no build tooling, and no environment variables are required — this is a static, unpacked extension.
+
+## Install & run
+
+1. Open `chrome://extensions` and enable **Developer mode**.
+2. Click **Load unpacked** and select this repo's root folder.
 3. Browse a product page on Amazon/Flipkart or a restaurant on Zomato/Swiggy — it gets tracked automatically.
-4. Click the extension icon, select 2+ tracked items, hit **Compare selected**.
+4. Click the toolbar icon to open the popup:
+   - **Compare** tab: tick 2+ tracked items, hit **Compare selected**, get a ranked best pick with a score breakdown.
+   - **Watchlist** tab: set a target price on any tracked item for drop alerts.
+   - **Food** tab: compare a Zomato order against the equivalent Swiggy order.
+   - **Settings** tab: save your bank cards (for net-price offer calculation) and tune the compare weight sliders.
 
-No icons are bundled yet (Chrome uses its default puzzle-piece icon) — drop `icons/16.png` / `48.png` / `128.png` and reference them in `manifest.json` if you want a custom icon.
+No icons are bundled yet — Chrome falls back to its default puzzle-piece icon. Drop `icons/16.png` / `48.png` / `128.png` and reference them under `"icons"` in `manifest.json` if you want a custom one.
 
-## Known limitations
+## Configuration
 
-- Zomato/Swiggy extraction is regex-heuristic over page text, not structured data — accuracy depends on page layout and may drift. Report a bad extraction by checking what the regexes in `content/zomato.js` / `content/swiggy.js` matched.
-- No price-history/alerts yet (Buy Hatke's headline feature) — current scope is point-in-time compare across currently tracked items. Could be added later with a lightweight local timeseries in `chrome.storage.local` keyed by date.
-- Not published to the Chrome Web Store — unpacked/dev install only.
+No `.env` file or environment variables are used — all configuration (weights, saved cards, alert settings) lives in `chrome.storage.sync` and is set from the popup's Settings tab, not from a config file.
+
+## Usage notes / known limitations
+
+- Zomato/Swiggy extraction is regex-heuristic over page text, not structured data — accuracy depends on page layout and may drift. If an extraction looks wrong, check what the regexes in `content/zomato.js` / `content/swiggy.js` matched.
+- Not published to the Chrome Web Store — unpacked/dev install only, for now.
+- Cross-store search and watchlist checks fetch pages directly from the four store domains (`amazon.in`, `amazon.com`, `flipkart.com`, `zomato.com`, `swiggy.com`) with `credentials: "omit"` — no other network calls are made anywhere in the codebase.
 
 ## Companion web tool
 
-A no-install, manual-entry version (paste price/rating/discount for a few options, get the same weighted best-pick scoring) is published separately as a Claude artifact for quick one-off comparisons when you're not using the extension.
+A no-install, manual-entry version (paste price/rating/discount for a few options, get the same weighted best-pick scoring) is published separately as a Claude artifact, for quick one-off comparisons when you're not using the extension.
+
+## Roadmap
+
+- Chrome Web Store packaging and a real icon set.
+- More store integrations beyond the current four.
+- Richer price-history visualizations in the popup.
+
+## Project status
+
+Early-stage, actively developed, functional for personal use. Internal implementation notes for contributors live in `CONTRACT.md`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

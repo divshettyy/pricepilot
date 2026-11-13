@@ -47,7 +47,35 @@
    * or pushes a new one. Trims the array to the most recent 200 entries.
    * Never throws — the extension context can be invalidated on navigation.
    */
-  async function upsertItem(item) {
+  /**
+   * Fill every contract field with a default so downstream code can rely on shape.
+   */
+  function normalizeItem(partial) {
+    const p = partial || {};
+    return {
+      url: p.url || cleanUrl(location.href),
+      title: p.title || "",
+      site: p.site || null,
+      price: p.price ?? null,
+      currency: p.currency || "INR",
+      capturedAt: p.capturedAt || new Date().toISOString(),
+      rating: p.rating ?? null,
+      discountPct: p.discountPct ?? null,
+      deliveryFee: p.deliveryFee ?? null,
+      mrp: p.mrp ?? null,
+      ratingCount: p.ratingCount ?? null,
+      ratingHistogram: p.ratingHistogram ?? null,
+      offers: Array.isArray(p.offers) ? p.offers : [],
+      unit: p.unit ?? null,
+      modelId: p.modelId ?? null,
+      restaurantKey: p.restaurantKey ?? null,
+      locality: p.locality ?? null,
+      cart: p.cart ?? null,
+    };
+  }
+
+  async function upsertItem(rawItem) {
+    const item = normalizeItem(rawItem);
     try {
       const result = await chrome.storage.local.get("trackedItems");
       let items = Array.isArray(result.trackedItems) ? result.trackedItems : [];
@@ -64,9 +92,18 @@
       }
 
       await chrome.storage.local.set({ trackedItems: items });
+      if (item.price != null && window.PricePilotHistory) {
+        await window.PricePilotHistory.addPoint(item.url, item.price);
+      }
     } catch (err) {
       console.warn("[PricePilot] upsertItem failed:", err);
     }
+    try {
+      window.dispatchEvent(new CustomEvent("pricepilot:item", { detail: item }));
+    } catch (err) {
+      console.warn("[PricePilot] item event failed:", err);
+    }
+    return item;
   }
 
   /**
@@ -89,6 +126,7 @@
     extractPriceFromText,
     extractRatingFromText,
     upsertItem,
+    normalizeItem,
     debounce,
   };
 })();

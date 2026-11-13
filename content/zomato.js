@@ -1,148 +1,123 @@
 // PricePilot — Zomato content script
-// Heuristic text-pattern extraction: Zomato is a React SPA with hashed/minified
-// class names that change on every deploy, so we scan rendered innerText instead
-// of relying on brittle CSS selectors. All heuristics below are best-effort and
-// may need tuning if Zomato's page layout/copy changes.
+// Heuristic text extraction: Zomato is a React SPA with hashed class names that
+// change every deploy, so we read rendered innerText and the page title instead
+// of CSS selectors. Shared heuristics live in lib/food.js (PricePilotFood).
+//
+// Cart handling: Zomato shows the cart/bill on the restaurant's own /order page,
+// so the bill attaches to that page's item. On a standalone checkout/cart URL
+// (no restaurant in the path) the bill is attached to the most recently tracked
+// Zomato item instead, since that is the restaurant the user just came from.
 
 (function () {
   try {
     var host = location.hostname || "";
     var path = location.pathname || "";
     if (host.indexOf("zomato.com") === -1) return;
-    if (path === "/") return; // bare homepage, nothing to extract
+    if (path === "/") return;
 
+    var F = window.PricePilotFood;
+    var C = window.PricePilotCommon;
+    if (!F || !C) return;
+    var normalize = C.normalizeItem || function (x) { return x; };
+
+    var SITE = "zomato";
     var lastSignature = null;
 
-    function getTitle() {
-      try {
-        var t = (document.title || "").trim();
-        // Strip common " - Zomato" / " | Zomato" suffixes
-        t = t.replace(/\s*[-|]\s*Zomato\s*$/i, "").trim();
-        if (t && t.toLowerCase() !== "zomato") return t;
+    // /<city>/<restaurant-slug>/order  -> city, slug
+    function urlParts() {
+      var segs = path.split("/").filter(Boolean);
+      return { city: segs[0] || null, slug: segs[1] || null };
+    }
+
+    function isStandaloneCheckout() {
+      return /\/(checkout|cart)(\/|$)/i.test(path);
+    }
+
+    function hasBill(text) {
+      return /To Pay|Bill Details|Bill Summary|Grand Total/i.test(text);
+    }
+
+    function getIdentity() {
+      var u = urlParts();
+      var parsed = F.parseTitle(document.title, "Zomato", u.city);
+      var name = parsed.name;
+      if (!name || /^zomato$/i.test(name)) {
         var h1 = document.querySelector("h1");
-        if (h1 && h1.textContent) return h1.textContent.trim();
-        return t || "";
-      } catch (e) {
-        return "";
+        name = h1 && h1.textContent ? h1.textContent.trim() : "";
       }
+      var locality = parsed.locality || F.localityFromSlug(u.slug, name, u.city);
+      return { name: name, locality: locality };
     }
 
-    // Heuristic: find a rating 1.0-5.0, preferring one near the word "rating(s)".
-    function findRatingInText(text) {
-      try {
-        var nearRatings = /([0-5]\.\d)\s*\n?\s*\d*\s*(?:ratings?|Ratings?)/;
-        var m = nearRatings.exec(text);
-        if (m) {
-          var v = parseFloat(m[1]);
-          if (v >= 1 && v <= 5) return v;
-        }
-        // Fallback: first bare X.Y in range 1.0-5.0 within the first 2000 chars.
-        var head = text.slice(0, 2000);
-        var bare = /\b([1-5]\.\d)\b/g;
-        var bm;
-        while ((bm = bare.exec(head)) !== null) {
-          var bv = parseFloat(bm[1]);
-          if (bv >= 1 && bv <= 5) return bv;
-        }
-        return null;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    // Collect all ₹ amounts, filter obvious fee/tax noise (<30), take median.
-    function findAllPricesInText(text) {
-      try {
-        var re = /₹\s?([\d,]+(?:\.\d+)?)/g;
-        var vals = [];
-        var m;
-        while ((m = re.exec(text)) !== null) {
-          var n = parseFloat(m[1].replace(/,/g, ""));
-          if (!isNaN(n) && n >= 30) vals.push(n);
-        }
-        return vals;
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function median(nums) {
-      if (!nums.length) return null;
-      var sorted = nums.slice().sort(function (a, b) {
-        return a - b;
+    async function attachCartToRecent(cart) {
+      var data = await chrome.storage.local.get("trackedItems");
+      var items = (data && data.trackedItems) || [];
+      var recent = null;
+      items.forEach(function (it) {
+        if (it.site === SITE && (!recent || it.capturedAt > recent.capturedAt)) recent = it;
       });
-      var mid = Math.floor(sorted.length / 2);
-      if (sorted.length % 2 === 0) return (sorted[mid - 1] + sorted[mid]) / 2;
-      return sorted[mid];
-    }
-
-    function findDeliveryFeeInText(text) {
-      try {
-        var re = /Delivery\s*(?:Fee|Partner Fee)?\s*₹\s?([\d,]+(?:\.\d+)?)/i;
-        var m = re.exec(text);
-        if (m) {
-          var n = parseFloat(m[1].replace(/,/g, ""));
-          if (!isNaN(n)) return n;
-        }
-        return null;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function findMaxDiscountInText(text) {
-      try {
-        var re = /(\d+)%\s*OFF/gi;
-        var max = null;
-        var m;
-        while ((m = re.exec(text)) !== null) {
-          var n = parseInt(m[1], 10);
-          if (!isNaN(n) && (max === null || n > max)) max = n;
-        }
-        return max;
-      } catch (e) {
-        return null;
-      }
+      if (!recent) return;
+      var sig = "cart|" + recent.url + "|" + cart.grandTotal;
+      if (sig === lastSignature) return;
+      lastSignature = sig;
+      var updated = Object.assign({}, recent, { cart: cart, capturedAt: new Date().toISOString() });
+      await C.upsertItem(normalize(updated));
     }
 
     function extractAndMaybeSave() {
       try {
         var text = (document.body && document.body.innerText) || "";
-        var title = getTitle();
-        var prices = findAllPricesInText(text);
-        var price = prices.length >= 1 ? median(prices) : null;
-        var rating = findRatingInText(text);
-        var discountPct = findMaxDiscountInText(text);
-        var deliveryFee = findDeliveryFeeInText(text);
+        var cart = hasBill(text) ? F.parseCart(text) : null;
 
-        var signature = price + "|" + rating + "|" + discountPct;
+        if (isStandaloneCheckout()) {
+          if (cart) attachCartToRecent(cart).catch(function (e) {
+            console.warn("[PricePilot/zomato] cart attach error", e);
+          });
+          return;
+        }
+
+        var id = getIdentity();
+        var scan = F.scanPage(text);
+        if (scan.price === null || !id.name) return;
+
+        var signature = [scan.price, scan.rating, scan.discountPct, cart ? cart.grandTotal : ""].join("|");
         if (signature === lastSignature) return;
-        if (price === null || !title) return;
-
         lastSignature = signature;
 
+        var offers = [];
+        if (window.PricePilotOffers && scan.offerTexts.length) {
+          try { offers = window.PricePilotOffers.parseOffers(scan.offerTexts) || []; } catch (e) { offers = []; }
+        }
+
         var item = {
-          url: window.PricePilotCommon.cleanUrl(location.href),
-          title: title,
-          price: price,
+          url: C.cleanUrl(location.href),
+          title: id.name,
+          site: SITE,
+          price: scan.price,
           currency: "INR",
-          rating: rating,
-          discountPct: discountPct,
-          deliveryFee: deliveryFee,
-          site: "zomato",
-          capturedAt: new Date().toISOString()
+          capturedAt: new Date().toISOString(),
+          rating: scan.rating,
+          discountPct: scan.discountPct,
+          deliveryFee: cart && cart.deliveryFee != null ? cart.deliveryFee : scan.deliveryFee,
+          mrp: null,
+          ratingCount: scan.ratingCount,
+          ratingHistogram: null,
+          offers: offers,
+          unit: null,
+          modelId: null,
+          restaurantKey: F.restaurantKey(id.name, id.locality),
+          locality: id.locality,
+          cart: cart
         };
 
-        window.PricePilotCommon.upsertItem(item);
+        C.upsertItem(normalize(item));
       } catch (e) {
         console.warn("[PricePilot/zomato] extraction error", e);
       }
     }
 
-    var debouncedExtract = window.PricePilotCommon.debounce(extractAndMaybeSave, 800);
-
-    var observer = new MutationObserver(debouncedExtract);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    var debounced = C.debounce(extractAndMaybeSave, 800);
+    new MutationObserver(debounced).observe(document.body, { childList: true, subtree: true, characterData: true });
 
     extractAndMaybeSave();
     setTimeout(extractAndMaybeSave, 2000);
