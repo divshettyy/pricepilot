@@ -1,0 +1,331 @@
+<title>Best Pick Compare</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* layout: settings strip (cards + weights), option cards grid, ranked verdict below */
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --border:#e1ddd3; --fg:#1d1b17; --fg-dim:#6b665c;
+  --accent:#c4531d; --accent-fg:#ffffff; --good:#2f7d4f; --warn:#a8760a; --bad:#b3261e; --chip-bg:#efeadf;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15130f; --surface:#1f1c16; --border:#332f26; --fg:#f2eee4; --fg-dim:#a6a192;
+    --accent:#e07a3e; --accent-fg:#1d1b17; --good:#5bbf85; --warn:#e0b448; --bad:#f07167; --chip-bg:#2a261e;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15130f; --surface:#1f1c16; --border:#332f26; --fg:#f2eee4; --fg-dim:#a6a192;
+  --accent:#e07a3e; --accent-fg:#1d1b17; --good:#5bbf85; --warn:#e0b448; --bad:#f07167; --chip-bg:#2a261e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--fg); margin:0; font-family:Inter,system-ui,sans-serif;
+  padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:'Space Grotesk',Inter,system-ui,sans-serif; text-wrap:balance; margin:0}
+.wrap{max-width:960px; margin:0 auto; padding-block:28px 60px; display:flex; flex-direction:column; gap:20px}
+.eyebrow{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--fg-dim); font-weight:600}
+h1{font-size:clamp(22px,4vw,30px); margin-top:4px}
+.sub{color:var(--fg-dim); font-size:14px; max-width:62ch; line-height:1.5; margin:8px 0 0}
+.panel{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; min-width:0}
+.panel h3{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-dim)}
+.settings{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px}
+.row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.hint{font-size:12px; color:var(--fg-dim); line-height:1.45; margin:0}
+select,input[type=text],input[type=number],textarea{background:var(--bg); border:1px solid var(--border); color:var(--fg);
+  border-radius:7px; padding:6px 8px; font-size:13px; font-family:inherit; min-width:0}
+textarea{resize:vertical; min-height:52px; width:100%}
+.chip{display:inline-flex; align-items:center; gap:6px; background:var(--chip-bg); border-radius:999px; padding:4px 6px 4px 10px; font-size:12px}
+.chip button{background:none; border:none; color:var(--fg-dim); cursor:pointer; font-size:14px; line-height:1; padding:0 2px}
+.weights{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px}
+.weight-row{display:flex; flex-direction:column; gap:3px; min-width:0}
+.weight-row label{font-size:12px; color:var(--fg-dim); display:flex; justify-content:space-between}
+.weight-row output{font-variant-numeric:tabular-nums; color:var(--fg)}
+input[type=range]{width:100%; accent-color:var(--accent)}
+.btn{background:var(--accent); color:var(--accent-fg); border:none; border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer}
+.btn:hover{filter:brightness(1.08)} .btn:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.btn.ghost{background:none; border:1px solid var(--border); color:var(--fg)}
+.btn.small{padding:6px 10px; font-size:12px}
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.count{color:var(--fg-dim); font-size:13px; margin-left:auto}
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px; min-width:0}
+.card-top{display:flex; justify-content:space-between; gap:8px}
+.name-input{font-weight:600; font-size:14px; width:100%}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+.field{display:flex; flex-direction:column; gap:2px; min-width:0}
+.field span{font-size:11px; color:var(--fg-dim)}
+.field input{width:100%}
+.food-only[hidden]{display:none!important}
+.remove-btn{background:none; border:none; color:var(--fg-dim); font-size:18px; line-height:1; cursor:pointer; padding:2px 4px}
+.remove-btn:hover{color:var(--bad)}
+.site-chip{font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; color:#fff; white-space:nowrap}
+.site-amazon{background:#b36b00} .site-flipkart{background:#2874f0} .site-zomato{background:#cb2a3a} .site-swiggy{background:#d96a0b} .site-other{background:#6b665c}
+.live{font-size:12px; color:var(--fg-dim); display:flex; flex-wrap:wrap; gap:4px 10px; border-top:1px dashed var(--border); padding-top:8px}
+.live b{color:var(--fg); font-variant-numeric:tabular-nums}
+.live .ok{color:var(--good)} .live .warn{color:var(--warn)}
+#result[hidden]{display:none!important}
+#result{display:flex; flex-direction:column; gap:12px}
+.winner{background:var(--surface); border:2px solid var(--good); border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:10px}
+.winner-badge{font-size:12px; font-weight:700; color:var(--good); text-transform:uppercase; letter-spacing:.06em}
+.winner-name{font-size:19px; font-weight:700; display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.facts{display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13px; color:var(--fg-dim)}
+.facts b{color:var(--fg); font-variant-numeric:tabular-nums}
+.why{margin:0; padding-left:18px; font-size:13px; line-height:1.5}
+.bars{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px}
+.bar-group{display:flex; flex-direction:column; gap:4px}
+.bar-label{font-size:11px; color:var(--fg-dim); display:flex; justify-content:space-between; font-variant-numeric:tabular-nums}
+.bar-track{height:7px; border-radius:99px; background:var(--chip-bg); overflow:hidden}
+.bar-fill{height:100%; background:var(--accent); border-radius:99px}
+.rank-row{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; flex-wrap:wrap}
+.rank-num{font-family:'Space Grotesk',sans-serif; font-weight:700; color:var(--fg-dim); width:24px}
+.rank-name{flex:1; min-width:120px; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rank-meta{font-size:12px; color:var(--fg-dim); font-variant-numeric:tabular-nums}
+.rank-score{font-variant-numeric:tabular-nums; font-weight:700; color:var(--accent); font-size:14px; min-width:28px; text-align:right}
+.flag{font-size:11px; padding:2px 7px; border-radius:999px; background:var(--chip-bg); color:var(--warn)}
+footer{color:var(--fg-dim); font-size:12px; text-align:center; padding-top:12px; border-top:1px solid var(--border); line-height:1.6}
+footer a{color:var(--accent)}
+@media (max-width:420px){ .weights{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:reduce){ *{scroll-behavior:auto!important} }
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">Shopping &amp; food delivery</div>
+    <h1>Best Pick Compare</h1>
+    <p class="sub">Enter a few options from Amazon, Flipkart, Zomato, Swiggy or any store. Paste the bank offers you see. You get the price you actually pay with your cards, a rating adjusted for how many people rated it, and a ranked pick with the reasons.</p>
+  </div>
+
+  <div class="settings">
+    <section class="panel">
+      <h3>Your cards</h3>
+      <div class="row">
+        <select id="bankSel" aria-label="Bank"></select>
+        <select id="typeSel" aria-label="Card type"><option value="credit">Credit</option><option value="debit">Debit</option></select>
+        <button class="btn small" id="addCardBtn">Add card</button>
+      </div>
+      <div class="row" id="cardChips"></div>
+      <p class="hint">Used only to work out which pasted bank offers apply to you. Saved in this browser only.</p>
+    </section>
+    <section class="panel">
+      <div class="row" style="justify-content:space-between"><h3>What matters to you</h3><button class="btn ghost small" id="resetWeights">Reset</button></div>
+      <div class="weights">
+        <div class="weight-row"><label for="wPrice">Price <output id="wPriceVal">45</output></label><input type="range" id="wPrice" min="0" max="100" value="45"></div>
+        <div class="weight-row"><label for="wRating">Rating <output id="wRatingVal">25</output></label><input type="range" id="wRating" min="0" max="100" value="25"></div>
+        <div class="weight-row"><label for="wDiscount">Discount <output id="wDiscountVal">20</output></label><input type="range" id="wDiscount" min="0" max="100" value="20"></div>
+        <div class="weight-row"><label for="wDelivery">Delivery fee <output id="wDeliveryVal">10</output></label><input type="range" id="wDelivery" min="0" max="100" value="10"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn" id="addCard">+ Add option</button>
+    <button class="btn ghost" id="loadGadget">Example: headphones</button>
+    <button class="btn ghost" id="loadFood">Example: biryani order</button>
+    <button class="btn ghost" id="clearAll">Clear</button>
+    <span class="count" id="cardCount"></span>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <button class="btn" id="compareBtn" style="align-self:center; padding:12px 28px; font-size:14px">Compare and pick</button>
+  <p class="hint" id="compareHint" style="text-align:center" hidden>Add at least 2 options with a price.</p>
+
+  <div id="result" hidden>
+    <div class="winner">
+      <div class="winner-badge">Best pick</div>
+      <div class="winner-name" id="winnerName"></div>
+      <div class="facts" id="winnerFacts"></div>
+      <ul class="why" id="winnerWhy"></ul>
+      <div class="bars" id="winnerBars"></div>
+    </div>
+    <div id="rankList" style="display:flex; flex-direction:column; gap:8px"></div>
+  </div>
+
+  <footer>Same scoring code as the PricePilot browser extension, which also tracks price history, flags fake discounts and checks the other store for you.<br>Example options are made up. Nothing you type leaves this page.</footer>
+</div>
+
+<script>
+/*__LIBS__*/
+</script>
+<script>
+(function(){
+  "use strict";
+  var O = window.PricePilotOffers, R = window.PricePilotReviews, U = window.PricePilotUnit, S = window.PricePilotScoring;
+  var DEFAULTS = {price:45, rating:25, discount:20, delivery:10};
+  var BANKS = ["HDFC","ICICI","SBI","Axis","Kotak","IDFC First","Yes","IndusInd","AU","RBL","Bank of Baroda","HSBC","Standard Chartered","Amex","OneCard","Federal","Flipkart Axis","Amazon Pay ICICI"];
+  var FOOD = {zomato:1, swiggy:1};
+  var cardsEl = document.getElementById('cards');
+  var myCards = [];
+
+  function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function load(k, d){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function money(n){ return n == null || isNaN(n) ? '—' : '₹' + Math.round(n).toLocaleString('en-IN'); }
+  function siteClass(s){ return FOOD[s] || s === 'amazon' || s === 'flipkart' ? 'site-' + s : 'site-other'; }
+  function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // ---- saved cards ----
+  var bankSel = document.getElementById('bankSel');
+  bankSel.innerHTML = BANKS.map(function(b){ return '<option>' + esc(b) + '</option>'; }).join('');
+  function renderChips(){
+    var el = document.getElementById('cardChips');
+    el.innerHTML = myCards.length ? myCards.map(function(c, i){
+      return '<span class="chip">' + esc(c.bank) + ' ' + c.cardType + '<button data-i="' + i + '" aria-label="Remove ' + esc(c.bank) + ' card">×</button></span>';
+    }).join('') : '<span class="hint">No cards yet. Add one to see your real net price.</span>';
+    el.querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ myCards.splice(+b.dataset.i, 1); store('pp_cards', myCards); renderChips(); refreshAll(); }); });
+  }
+  document.getElementById('addCardBtn').addEventListener('click', function(){
+    var c = {bank: bankSel.value, cardType: document.getElementById('typeSel').value};
+    if (!myCards.some(function(x){ return x.bank === c.bank && x.cardType === c.cardType; })) myCards.push(c);
+    store('pp_cards', myCards); renderChips(); refreshAll();
+  });
+
+  // ---- weights ----
+  var W = ['Price','Rating','Discount','Delivery'];
+  function readWeights(){ var w = {}; W.forEach(function(k){ w[k.toLowerCase()] = +document.getElementById('w' + k).value / 100; }); return w; }
+  function setWeights(v){ W.forEach(function(k){ var x = v[k.toLowerCase()]; document.getElementById('w' + k).value = x; document.getElementById('w' + k + 'Val').textContent = x; }); }
+  W.forEach(function(k){
+    var inp = document.getElementById('w' + k);
+    inp.addEventListener('input', function(){ document.getElementById('w' + k + 'Val').textContent = inp.value; });
+    inp.addEventListener('change', function(){ var w = {}; W.forEach(function(j){ w[j.toLowerCase()] = +document.getElementById('w' + j).value; }); store('pp_weights', w); });
+  });
+  document.getElementById('resetWeights').addEventListener('click', function(){ setWeights(DEFAULTS); store('pp_weights', DEFAULTS); });
+
+  // ---- option cards ----
+  function field(cls, label, val, attrs){
+    return '<label class="field' + (cls.indexOf('food') > -1 ? ' food-only' : '') + '"><span>' + label + '</span><input type="number" class="' + cls + '" ' + (attrs || 'min="0"') + ' value="' + (val == null ? '' : esc(val)) + '"></label>';
+  }
+  function addCard(d){
+    d = d || {};
+    var site = d.site || 'amazon';
+    var el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML =
+      '<div class="card-top"><select class="f-site" aria-label="Store">' +
+        ['amazon','flipkart','zomato','swiggy','other'].map(function(s){ return '<option value="' + s + '"' + (s === site ? ' selected' : '') + '>' + cap(s) + '</option>'; }).join('') +
+      '</select><button class="remove-btn" title="Remove option" aria-label="Remove option">×</button></div>' +
+      '<input type="text" class="name-input f-name" aria-label="Name" placeholder="Name, e.g. Tata Salt 1kg or Biryani House" value="' + esc(d.name || '') + '">' +
+      '<div class="grid2">' +
+        field('f-price', 'Price (₹)', d.price) + field('f-mrp', 'MRP / list price (₹)', d.mrp) +
+        field('f-rating', 'Rating (0–5)', d.rating, 'min="0" max="5" step="0.1"') + field('f-count', 'No. of ratings', d.ratingCount) +
+        field('f-delivery', 'Delivery fee (₹)', d.deliveryFee) + field('f-fees food', 'Packaging + platform + GST (₹)', d.fees) +
+      '</div>' +
+      '<label class="field"><span>Bank offers (paste the text you see)</span><textarea class="f-offers" placeholder="10% Instant Discount up to ₹1,500 on HDFC Bank Credit Cards">' + esc(d.offers || '') + '</textarea></label>' +
+      '<div class="live"></div>';
+    el.querySelector('.remove-btn').addEventListener('click', function(){ el.remove(); updateCount(); });
+    el.addEventListener('input', function(){ refresh(el); });
+    el.querySelector('.f-site').addEventListener('change', function(){ refresh(el); });
+    cardsEl.appendChild(el);
+    refresh(el); updateCount();
+  }
+
+  function readCard(el){
+    var num = function(c){ var v = el.querySelector('.' + c).value; return v === '' ? null : Number(v); };
+    var site = el.querySelector('.f-site').value;
+    var name = el.querySelector('.f-name').value.trim() || 'Untitled option';
+    var price = num('f-price'), mrp = num('f-mrp'), fees = FOOD[site] ? num('f-fees') : null;
+    var offerText = el.querySelector('.f-offers').value.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    var offers = offerText.length && O ? O.parseOffers(offerText) : [];
+    var total = price == null ? null : price + (fees || 0);
+    var discountPct = (mrp && price && mrp > price) ? Math.round((mrp - price) / mrp * 100) : null;
+    return {
+      title: name, name: name, site: site, url: '#' + Math.random(),
+      price: total, basePrice: price, fees: fees, mrp: mrp, discountPct: discountPct,
+      rating: num('f-rating'), ratingCount: num('f-count'), ratingHistogram: null,
+      deliveryFee: num('f-delivery'), offers: offers,
+      unit: U ? U.parseUnit(name) : null
+    };
+  }
+
+  function refresh(el){
+    var site = el.querySelector('.f-site').value;
+    el.querySelectorAll('.food-only').forEach(function(f){ f.hidden = !FOOD[site]; });
+    var it = readCard(el), bits = [];
+    if (it.price != null && it.offers.length && O){
+      var best = O.bestNetPrice(it.price, it.offers, myCards);
+      if (best) bits.push('<span class="ok">You pay <b>' + money(best.netPrice) + '</b> with ' + esc(best.offer.bank || 'offer') + '</span>');
+      else bits.push('<span>' + it.offers.length + ' offer' + (it.offers.length > 1 ? 's' : '') + ' found, none for your cards</span>');
+    }
+    if (it.discountPct != null) bits.push('<span>' + it.discountPct + '% off MRP</span>');
+    if (it.rating != null && R){
+      var a = R.assess(it);
+      bits.push('<span>Adjusted <b>' + a.adjustedRating.toFixed(1) + '★</b></span>');
+      if (a.flags.length) bits.push('<span class="warn">' + esc(a.flags[0]) + '</span>');
+    }
+    if (it.unit && it.basePrice != null && U){ var pu = U.perUnit(it.basePrice, it.unit); if (pu) bits.push('<span><b>' + money(pu.value) + '</b> ' + esc(pu.label.replace('₹', '')) + '</span>'); }
+    el.querySelector('.live').innerHTML = bits.join('') || '<span>Fill in price, rating and offers to see your real numbers.</span>';
+  }
+  function refreshAll(){ Array.prototype.forEach.call(cardsEl.children, refresh); }
+  function updateCount(){ var n = cardsEl.children.length; document.getElementById('cardCount').textContent = n + (n === 1 ? ' option' : ' options'); }
+
+  var GADGET = [
+    {site:'amazon', name:'Sony WH-1000XM5 Headphones (example)', price:26990, mrp:34990, rating:4.4, ratingCount:8214, deliveryFee:0, offers:'10% Instant Discount up to ₹1,500 on HDFC Bank Credit Card Transactions. Min purchase value ₹5,000\nFlat ₹1,000 off on ICICI Bank Debit Cards'},
+    {site:'flipkart', name:'Sony WH-1000XM5 Headphones (example)', price:25490, mrp:34990, rating:4.5, ratingCount:1200, deliveryFee:0, offers:'5% Cashback on Flipkart Axis Bank Card'},
+    {site:'other', name:'Sony WH-1000XM5 Headphones, small reseller (example)', price:25999, mrp:34990, rating:4.9, ratingCount:14, deliveryFee:149, offers:''}
+  ];
+  var FOODSET = [
+    {site:'zomato', name:'Biryani House, Indiranagar (example)', price:480, rating:4.2, ratingCount:12000, deliveryFee:40, fees:52, offers:'Flat ₹75 off on ICICI Bank Credit Cards above ₹399'},
+    {site:'swiggy', name:'Biryani House, Indiranagar (example)', price:480, rating:4.1, ratingCount:9800, deliveryFee:0, fees:50, offers:'10% off up to ₹100 on HDFC Bank Credit Cards'}
+  ];
+  function loadSet(set){ cardsEl.innerHTML = ''; document.getElementById('result').hidden = true; set.forEach(addCard); }
+  document.getElementById('addCard').addEventListener('click', function(){ addCard(); });
+  document.getElementById('loadGadget').addEventListener('click', function(){ loadSet(GADGET); });
+  document.getElementById('loadFood').addEventListener('click', function(){ loadSet(FOODSET); });
+  document.getElementById('clearAll').addEventListener('click', function(){ loadSet([{}, {}]); });
+
+  // ---- compare ----
+  function bar(label, pct){
+    pct = Math.max(0, Math.min(100, pct || 0));
+    return '<div class="bar-group"><div class="bar-label"><span>' + label + '</span><span>' + Math.round(pct) + '</span></div><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div></div>';
+  }
+  function reasons(top, ranked){
+    var out = [], others = ranked.slice(1);
+    var cheapest = Math.min.apply(null, ranked.map(function(r){ return r.effectivePrice != null ? r.effectivePrice : Infinity; }));
+    if (top.effectivePrice === cheapest && others.length) {
+      var next = Math.min.apply(null, others.map(function(r){ return r.effectivePrice != null ? r.effectivePrice : Infinity; }));
+      if (isFinite(next) && next > top.effectivePrice) out.push('Cheapest after your card offers, by ' + money(next - top.effectivePrice) + '.');
+    }
+    if (top.effectivePrice != null && top.price != null && top.effectivePrice < top.price) out.push('Your card offer saves ' + money(top.price - top.effectivePrice) + '.');
+    var bestRated = Math.max.apply(null, ranked.map(function(r){ return r.adjustedRating || 0; }));
+    if (top.adjustedRating && top.adjustedRating === bestRated) out.push('Highest rating once review counts are taken into account.');
+    ranked.forEach(function(r){
+      if (r !== top && R && r.rating != null && r.ratingCount != null && r.ratingCount < 30) out.push(esc(r.name) + ': its ' + r.rating + '★ comes from only ' + r.ratingCount + ' ratings, so it counts for less.');
+    });
+    return out.length ? out : ['Best balance of the factors you weighted.'];
+  }
+  document.getElementById('compareBtn').addEventListener('click', function(){
+    var items = Array.prototype.map.call(cardsEl.children, readCard).filter(function(i){ return i.price != null; });
+    var hint = document.getElementById('compareHint');
+    if (items.length < 2){ hint.hidden = false; return; }
+    hint.hidden = true;
+    var ranked = S.computeScores(items, readWeights(), {cards: myCards});
+    var top = ranked[0], res = document.getElementById('result');
+    res.hidden = false;
+    document.getElementById('winnerName').innerHTML = '<span class="site-chip ' + siteClass(top.site) + '">' + esc(cap(top.site)) + '</span>' + esc(top.name);
+    var facts = ['You pay <b>' + money(top.effectivePrice) + '</b>'];
+    if (top.deliveryFee) facts.push('+ delivery <b>' + money(top.deliveryFee) + '</b>');
+    if (top.adjustedRating) facts.push('Rating <b>' + top.adjustedRating.toFixed(1) + '★</b> adjusted');
+    facts.push('Score <b>' + Math.round(top.score) + '</b>');
+    document.getElementById('winnerFacts').innerHTML = facts.map(function(f){ return '<span>' + f + '</span>'; }).join('');
+    document.getElementById('winnerWhy').innerHTML = reasons(top, ranked).map(function(r){ return '<li>' + r + '</li>'; }).join('');
+    var b = top.scoreBreakdown;
+    document.getElementById('winnerBars').innerHTML = bar('Price', b.priceScore) + bar('Rating', b.ratingScore) + bar('Discount', b.discountScore) + bar('Delivery', b.deliveryScore);
+    document.getElementById('rankList').innerHTML = ranked.map(function(r, i){
+      var a = R && r.rating != null ? R.assess(r) : null;
+      return '<div class="rank-row"><div class="rank-num">#' + (i + 1) + '</div><span class="site-chip ' + siteClass(r.site) + '">' + esc(cap(r.site)) + '</span>' +
+        '<div class="rank-name">' + esc(r.name) + '</div>' +
+        '<span class="rank-meta">' + money(r.effectivePrice) + (r.adjustedRating ? ' · ' + r.adjustedRating.toFixed(1) + '★' : '') + '</span>' +
+        (a && a.trust === 'low' ? '<span class="flag">Low trust</span>' : '') +
+        '<div class="rank-score">' + Math.round(r.score) + '</div></div>';
+    }).join('');
+    res.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  });
+
+  // ---- init ----
+  myCards = load('pp_cards', [{bank: 'HDFC', cardType: 'credit'}]);
+  setWeights(load('pp_weights', DEFAULTS));
+  renderChips();
+  loadSet(GADGET);
+  document.getElementById('compareBtn').click();
+})();
+</script>
