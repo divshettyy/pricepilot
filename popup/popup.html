@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PricePilot</title>
+<link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>PricePilot</h1>
+    <p class="subtitle">Compare tracked items, pick the best deal</p>
+  </header>
+
+  <section class="weights-panel">
+    <div class="slider-row">
+      <label for="wPrice">Price importance</label>
+      <input type="range" id="wPrice" min="0" max="100" step="1" />
+      <span class="slider-value" id="wPriceVal">0</span>
+    </div>
+    <div class="slider-row">
+      <label for="wRating">Rating importance</label>
+      <input type="range" id="wRating" min="0" max="100" step="1" />
+      <span class="slider-value" id="wRatingVal">0</span>
+    </div>
+    <div class="slider-row">
+      <label for="wDiscount">Discount importance</label>
+      <input type="range" id="wDiscount" min="0" max="100" step="1" />
+      <span class="slider-value" id="wDiscountVal">0</span>
+    </div>
+    <div class="slider-row">
+      <label for="wDelivery">Delivery-fee importance</label>
+      <input type="range" id="wDelivery" min="0" max="100" step="1" />
+      <span class="slider-value" id="wDeliveryVal">0</span>
+    </div>
+    <button id="resetWeightsBtn" class="btn btn-secondary">Reset to defaults</button>
+  </section>
+
+  <section class="toolbar">
+    <button id="compareBtn" class="btn btn-primary" disabled>Compare selected</button>
+    <button id="clearAllBtn" class="btn btn-danger">Clear all</button>
+    <span id="itemCount" class="item-count">0 items tracked</span>
+  </section>
+
+  <section id="itemList" class="item-list"></section>
+
+  <section id="resultPanel" class="result-panel" hidden>
+    <h2>Comparison Result</h2>
+    <div id="resultContent"></div>
+  </section>
+
+  <script src="../lib/scoring.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

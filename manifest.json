@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "PricePilot — Smart Shopping Compare",
+  "version": "0.1.0",
+  "description": "Track price, rating, discount and delivery fee across Amazon, Flipkart, Zomato and Swiggy, then get a weighted best-pick recommendation. Like Buy Hatke, but transparent and local-only.",
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": [
+    "https://*.amazon.in/*",
+    "https://*.amazon.com/*",
+    "https://*.flipkart.com/*",
+    "https://*.zomato.com/*",
+    "https://*.swiggy.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.amazon.in/*", "https://*.amazon.com/*"],
+      "js": ["lib/scoring.js", "content/common.js", "content/amazon.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.flipkart.com/*"],
+      "js": ["lib/scoring.js", "content/common.js", "content/flipkart.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.zomato.com/*"],
+      "js": ["lib/scoring.js", "content/common.js", "content/zomato.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.swiggy.com/*"],
+      "js": ["lib/scoring.js", "content/common.js", "content/swiggy.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "PricePilot — compare & pick best"
+  }
+}
