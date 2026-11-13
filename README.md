@@ -17,6 +17,29 @@ A local-only Chrome (Manifest V3) extension that tracks price, rating, discount 
 
 Amazon/Flipkart extraction uses stable DOM selectors with a text-regex fallback. Zomato/Swiggy use heuristic text-pattern scanning instead of CSS selectors, since both are React SPAs with randomized/minified class names that break selectors on every deploy — best-effort, and may need retuning after a site redesign.
 
+## How it compares
+
+Researched November 2026. Y = yes, N = no, partial = limited.
+
+| | PricePilot | Buyhatke | Keepa | PriceHistory.app | Honey | Smartprix |
+|---|---|---|---|---|---|---|
+| Price history | Y, from your first visit | Y, about 3 months | Y, full | Y | partial | partial |
+| Price-drop alerts | Y, browser notification | Y | Y | Y | Y | Y |
+| Fake-discount verdict with visible rules | Y | marketed, rules hidden | read the chart yourself | "deal score", rules hidden | N | N |
+| Net price with **your** bank cards | Y | partial | N | N | N | unclear |
+| Live cross-store match (rejects XM4 vs XM5, 128 vs 256 GB, Pro vs base) | Y, Amazon and Flipkart | Y | N, Amazon only | Y | N | Y |
+| Review trust check (Fakespot shut down in July 2025) | Y, heuristic | N | N | N | N | N |
+| Unit price (₹/100g, ₹/GB) | Y | N | N | N | N | N |
+| Zomato vs Swiggy, same restaurant, full bill | Y | N | N | N | N | N |
+| Weights you control | Y | N | N | N | N | N |
+| No tracking, no affiliate cookie rewriting | Y | N, tracks usage | Y | unclear | N, lawsuit | N, affiliate |
+
+**Where competitors still win:**
+- **History on day one:** Keepa and PriceBefore crawl millions of products all the time. PricePilot's history starts the first time you open a product.
+- **Coupons and cashback:** both need a crowdsourced code database and affiliate deals.
+- **Email or Telegram alerts and cross-device sync:** they need a server. PricePilot uses only browser notifications.
+- **Large watchlists:** the store sites block bots. Keep the watchlist under about 40 items.
+
 ## Tech stack
 
 - Vanilla JavaScript (classic scripts, no build step, no bundler, no `import`/`export`) — see `CONTRACT.md` for the shared-globals pattern every file follows.
