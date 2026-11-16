@@ -1,0 +1,14 @@
+{
+  "name": "pricepilot",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Local-only MV3 extension: price history, fake-discount detection, card-offer net price, cross-store lookup, review trust, Zomato vs Swiggy compare.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node tests/run.js",
+    "build:web": "node web/build.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

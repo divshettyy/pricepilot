@@ -15,12 +15,13 @@
   /**
    * Scan text for a rupee price like "₹1,234", "Rs. 1234", "₹ 1,234.00".
    * Requires a ₹ symbol or "Rs." prefix immediately before the digits so we
-   * never accidentally match a bare number (e.g. a rating).
+   * never accidentally match a bare number (e.g. a rating). "Rs" must start a
+   * word: "4.3 stars, 1,234 ratings" and "offers 500" are not prices.
    * Returns a Number, or null if nothing found.
    */
   function extractPriceFromText(text) {
     if (!text) return null;
-    const re = /(?:₹|Rs\.?)\s*([\d,]+(?:\.\d+)?)/i;
+    const re = /(?:₹|\bRs\.?)\s*(\d[\d,]*(?:\.\d+)?)/i;
     const match = re.exec(text);
     if (!match) return null;
     const numeric = match[1].replace(/,/g, "");

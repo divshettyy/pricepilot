@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PricePilot — Smart Shopping Compare",
   "version": "0.2.0",
-  "description": "Price history, fake-discount detection, card-offer net price, cross-store lookup, review trust and Zomato vs Swiggy compare. Local-only: no tracking, no affiliate links.",
+  "description": "Price history, fake-discount check, card-offer net price, cross-store lookup, Zomato vs Swiggy. Local-only, no tracking.",
   "permissions": ["storage", "alarms", "notifications"],
   "host_permissions": [
     "https://*.amazon.in/*",

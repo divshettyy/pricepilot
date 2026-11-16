@@ -2,6 +2,23 @@
 
 All notable changes to PricePilot. Dates are in IST.
 
+## 2026-11-16 — Tests and CI
+
+### Added
+- Test suite: 102 tests in `tests/`, run with `npm test` (Node 20+, nothing to install). The extension's scripts are loaded into Node's `vm` with a fake `chrome` API and a fake `fetch`, so no browser and no network are used.
+  Covered: price history verdicts and storage caps, bank-offer parsing and net price, unit price, review trust, scoring, Zomato/Swiggy bill parsing and matching, cross-store search and price extraction, the service worker (watchlist check, alerts, cache, messages), the manifest, the privacy rules and the module contract.
+- `package.json` (no dependencies) and `.github/workflows/ci.yml` (Node 20 and 22; also fails if `web/compare.html` is not the current build).
+- `tests/run.js` loads the test files itself, because `node --test` cannot find files in some Linux builds of Node 22.
+
+### Fixed (found by the new tests)
+- "Rs" was matched inside words. "4.3 out of 5 stars, 1,234 ratings" gave a price of 0 and "3 offers 500" gave a price of 500. Fixed in `content/common.js`, `lib/food.js` and `lib/offers.js`: "Rs" must start a word and a digit must follow.
+- Offer lines written with "INR" ("Flat INR 2000 off ...") were dropped before parsing.
+- The manifest description was 169 characters; the Chrome Web Store limit is 132. Shortened to 120.
+
+### Not covered by tests
+- The page readers `content/amazon.js`, `flipkart.js`, `zomato.js`, `swiggy.js`, the overlay and the popup. They need a real page (DOM); only their syntax is checked.
+- Real store pages. All HTML in the tests is hand-written, so a layout change at Amazon or Flipkart will not fail a test.
+
 ## 2026-11-13 — Web tool v2
 
 Companion page: https://claude.ai/artifact/1mzNexVgH2vUCSFyoYeVTx (private)

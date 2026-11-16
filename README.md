@@ -51,6 +51,7 @@ Researched November 2026. Y = yes, N = no, partial = limited.
 
 - A Chromium-based browser (Chrome, Edge, Brave, etc.) with Developer mode support for unpacked extensions.
 - No Node.js, no build tooling, and no environment variables are required — this is a static, unpacked extension.
+- Tests (optional, Node 20+, nothing to install): `npm test` runs 102 tests without a browser or network.
 
 ## Install & run
 
