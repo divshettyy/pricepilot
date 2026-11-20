@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "test": "node tests/run.js",
-    "build:web": "node web/build.js"
+    "build:web": "node web/build.js",
+    "lint": "npx --yes eslint ."
   },
   "engines": {
     "node": ">=20"

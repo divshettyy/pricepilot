@@ -2,6 +2,18 @@
 
 All notable changes to PricePilot. Dates are in IST.
 
+## 2026-11-20 — Discoverability and developer tooling
+
+### Added
+- JSDoc headers on every top-level function in the `background.js` service worker (badge, settings, alarm, notifications, watchlist polling, cross-store search), so the message-passing surface reads clearly without opening each helper.
+- `.github/dependabot.yml` — weekly grouped updates for npm and GitHub Actions.
+- `.editorconfig` — shared whitespace and charset rules (2-space, LF, final newline).
+- `eslint.config.js` and an `npm run lint` script (opt-in via `npx`, deliberately kept out of CI so the test suite stays zero-install).
+
+### Notes
+- Manifest reviewed: MV3, three permissions (`storage`, `alarms`, `notifications`) and five host patterns, all justified — nothing broadened.
+- All 102 tests still pass; every `.js` file parses clean. No runtime behavior changed.
+
 ## 2026-11-16 — Tests and CI
 
 ### Added

@@ -5,22 +5,32 @@ const ALARM = "pp-watch";
 const CROSS_TTL_MS = 6 * 3600 * 1000;
 const MAX_WATCH = 40;
 
+/**
+ * Set the toolbar badge to the number of tracked items (blank when zero).
+ * @param {unknown} items - The tracked-items array from storage (anything else counts as 0).
+ */
 function setBadge(items) {
   const count = Array.isArray(items) ? items.length : 0;
   chrome.action.setBadgeText({ text: count > 0 ? String(count) : "" });
   chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
 }
 
+/** Read tracked items from local storage and refresh the toolbar badge. */
 async function refreshBadge() {
   const r = await chrome.storage.local.get("trackedItems");
   setBadge(r.trackedItems);
 }
 
+/**
+ * Load user settings from sync storage, merged over defaults.
+ * @returns {Promise<{cards:Array, alertsEnabled:boolean, checkIntervalHours:number, overlayEnabled:boolean}>}
+ */
 async function getSettings() {
   const r = await chrome.storage.sync.get("settings");
   return Object.assign({ cards: [], alertsEnabled: true, checkIntervalHours: 6, overlayEnabled: true }, r.settings || {});
 }
 
+/** Create or re-sync the watchlist polling alarm to match the current interval; clears it when alerts are off. */
 async function ensureAlarm() {
   const s = await getSettings();
   if (s.alertsEnabled === false) {
@@ -35,6 +45,10 @@ async function ensureAlarm() {
 }
 
 let iconCache = null;
+/**
+ * Render the ₹ notification icon once and cache it as a data URL.
+ * @returns {Promise<string>} A base64 PNG data URL (1x1 blue fallback if canvas is unavailable).
+ */
 async function iconUrl() {
   if (iconCache) return iconCache;
   try {
@@ -59,6 +73,12 @@ async function iconUrl() {
   return iconCache;
 }
 
+/**
+ * Show a basic desktop notification keyed by the item URL (click opens it).
+ * @param {string} url - Item URL, used as the notification id.
+ * @param {string} title
+ * @param {string} message
+ */
 async function notify(url, title, message) {
   try {
     chrome.notifications.create(url, {
@@ -73,6 +93,11 @@ async function notify(url, title, message) {
   }
 }
 
+/**
+ * Poll each watched URL (up to MAX_WATCH), record the latest price, and fire
+ * target-hit or price-drop notifications. Fetches with credentials omitted and
+ * paces requests 3s apart.
+ */
 async function checkWatchlist() {
   const s = await getSettings();
   if (s.alertsEnabled === false) return;
@@ -107,6 +132,12 @@ async function checkWatchlist() {
   }
 }
 
+/**
+ * Cross-store search with a 6h local cache keyed by query + excluded site.
+ * @param {string} query - Product search text.
+ * @param {string} [excludeSite] - Store to omit (the one the user is already on).
+ * @returns {Promise<Array>} Matching results from other stores.
+ */
 async function crossSearch(query, excludeSite) {
   const key = `${excludeSite || ""}|${(query || "").toLowerCase().trim()}`;
   const r = await chrome.storage.local.get("crossCache");
