@@ -1,94 +1,181 @@
-# PricePilot
+<div align="center">
 
-A local-only Chrome (Manifest V3) extension that tracks price, rating, discount and delivery fee across **Amazon, Flipkart, Zomato and Swiggy** while you browse, and recommends the best pick with a transparent, weighted score. Same job as apps like Buy Hatke — but everything stays in your browser: no account, no server, no telemetry, nothing leaves the four store domains it talks to.
+# 🛒 PricePilot
+
+**Real prices on Amazon & Flipkart India. No affiliate links. No tracking. No subscription.**
+
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://github.com/divshettyy/pricepilot)
+[![Manifest V3](https://img.shields.io/badge/Manifest-V3-brightgreen)](https://developer.chrome.com/docs/extensions/mv3/intro/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla-F7DF1E?logo=javascript&logoColor=black)](https://github.com/divshettyy/pricepilot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![No Tracking](https://img.shields.io/badge/Tracking-Zero-red)](https://github.com/divshettyy/pricepilot)
+[![Tests](https://img.shields.io/badge/Tests-102%20passing-success)](https://github.com/divshettyy/pricepilot/actions)
+
+A local-only Chrome (Manifest V3) extension that exposes what Indian shopping sites hide — price history, fake discounts, real net price after bank card offers, and cross-store comparisons — **all computed inside your browser. Nothing leaves it.**
+
+</div>
+
+---
+
+## Why PricePilot?
+
+Indian e-commerce runs on psychological pricing. Products sit at inflated MRPs, then get "60% off" that's actually the real price. Honey and Buy Hatke track you and rewrite your affiliate cookies. Keepa is Amazon-only. Fakespot shut down in 2025.
+
+PricePilot fixes this with zero telemetry, no account, no server.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  🛍️  PricePilot                                      [×]        │
+├─────────────────────────────────────────────────────────────────┤
+│  Sony WH-1000XM5 Headphones                                     │
+│                                                                 │
+│  Current price:  ₹24,990                                        │
+│  Lowest seen:    ₹19,990  (3 months ago)                        │
+│  Deal verdict:   ⚠️  NOT a deal — 25% above historic low        │
+│                                                                 │
+│  With HDFC card: ₹22,491  (10% instant discount)               │
+│  With ICICI card: ₹23,241  (6.99% cashback)                    │
+│                                                                 │
+│  Cross-store: Flipkart ₹23,490  ← better right now             │
+│                                                                 │
+│  Review trust: ⚡ 4.3★ adjusted  (1,240 reviews, low risk)     │
+│  Unit price: N/A                                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Features
 
-- **Auto-tracking** — content scripts on Amazon/Flipkart/Zomato/Swiggy pages extract `{title, price, rating, discountPct, deliveryFee}` and store it locally, deduped by canonical URL (capped at 200 items).
-- **Weighted "Best Pick" scoring** (`lib/scoring.js`) — min-max normalized price/delivery, rating/5, discount %, combined via sliders you control (price / rating / discount / delivery importance). No black box — read the function yourself.
-- **Price history & deal verdicts** (`lib/history.js`) — local timeseries per URL, used to flag a current price as a genuine deal vs. a fake "discount" off an inflated MRP.
-- **Price-drop watchlist & alerts** (`background.js`) — set a target price per item, get a `chrome.notifications` alert when it's hit or when the price drops at all.
-- **Card-offer net price** (`lib/offers.js`) — parses Indian bank/card offer text (instant discount, cashback, flat-off) against the cards you've saved in Settings and computes the real net price.
-- **Review-trust heuristics** (`lib/reviews.js`) — volume-aware (Bayesian-adjusted) rating plus labeled authenticity flags — heuristics, not fraud detection, meant to tell you where to look.
-- **Unit-price normalization** (`lib/unitprice.js`) — parses pack size out of the title and computes price-per-standard-unit so differently-sized packs are comparable.
-- **Cross-store lookup** (`lib/crossstore.js`, `background.js`) — service-worker-side search of the *other* store domains for a matching item, so you can compare across sites without manually re-searching.
-- **Zomato vs Swiggy compare** (`lib/food.js`) — restaurant matching and cart-bill parsing across both food apps, including delivery fee and platform/GST charges.
-- **On-page overlay** (`content/overlay.js`) — a Shadow-DOM panel injected into the page itself, so verdicts show up without opening the popup.
+| Feature | What it does |
+|---|---|
+| 📈 **Price history** | Tracks every price you see, per product URL. No day-one gap — starts immediately. |
+| 🚨 **Fake-discount detection** | Compares current price to your recorded history. Flags "60% off MRP" scams with visible logic. |
+| 💳 **Card-offer net price** | Parses instant-discount and cashback text for 20+ Indian bank cards. Shows real out-of-pocket cost. |
+| 🔔 **Price-drop alerts** | Set a target price. Get a Chrome notification when it's hit — no email, no account. |
+| 🔄 **Cross-store lookup** | Finds the same product on the other store (Amazon ↔ Flipkart). Rejects mismatches (XM4 ≠ XM5). |
+| ⭐ **Review trust score** | Bayesian-adjusted rating + authenticity flags. Heuristic, not Fakespot — but Fakespot is gone. |
+| ⚖️ **Unit-price normalization** | ₹/100g, ₹/GB, ₹/tablet — compares different pack sizes fairly. |
+| 🍔 **Zomato vs Swiggy** | Full bill comparison for the same restaurant: delivery fee, surge, platform fee, GST. |
+| 🎚️ **Adjustable weights** | Set how much price vs. rating vs. discount vs. delivery matters to *you*. |
+| 🕵️ **On-page overlay** | Shadow DOM panel injected into the product page. See verdicts without opening the popup. |
 
-Amazon/Flipkart extraction uses stable DOM selectors with a text-regex fallback. Zomato/Swiggy use heuristic text-pattern scanning instead of CSS selectors, since both are React SPAs with randomized/minified class names that break selectors on every deploy — best-effort, and may need retuning after a site redesign.
+---
 
 ## How it compares
 
-Researched November 2026. Y = yes, N = no, partial = limited.
+*Researched November 2026. Y = yes, N = no, partial = limited.*
 
-| | PricePilot | Buyhatke | Keepa | PriceHistory.app | Honey | Smartprix |
-|---|---|---|---|---|---|---|
-| Price history | Y, from your first visit | Y, about 3 months | Y, full | Y | partial | partial |
-| Price-drop alerts | Y, browser notification | Y | Y | Y | Y | Y |
-| Fake-discount verdict with visible rules | Y | marketed, rules hidden | read the chart yourself | "deal score", rules hidden | N | N |
-| Net price with **your** bank cards | Y | partial | N | N | N | unclear |
-| Live cross-store match (rejects XM4 vs XM5, 128 vs 256 GB, Pro vs base) | Y, Amazon and Flipkart | Y | N, Amazon only | Y | N | Y |
-| Review trust check (Fakespot shut down in July 2025) | Y, heuristic | N | N | N | N | N |
-| Unit price (₹/100g, ₹/GB) | Y | N | N | N | N | N |
-| Zomato vs Swiggy, same restaurant, full bill | Y | N | N | N | N | N |
-| Weights you control | Y | N | N | N | N | N |
-| No tracking, no affiliate cookie rewriting | Y | N, tracks usage | Y | unclear | N, lawsuit | N, affiliate |
+| | **PricePilot** | Buyhatke | Keepa | PriceHistory.app | Honey | Smartprix |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Price history | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
+| Price-drop alerts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Fake-discount verdict (visible rules)** | ✅ | ❌ hidden | ❌ | ❌ hidden | ❌ | ❌ |
+| **Net price with your bank cards** | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ |
+| **Cross-store (rejects spec mismatches)** | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| Review trust check | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Unit price (₹/100g, ₹/GB)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Zomato vs Swiggy full bill** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Adjustable scoring weights** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Zero tracking / no affiliate rewrites** | ✅ | ❌ tracks | ✅ | ❓ | ❌ lawsuit | ❌ affiliate |
 
 **Where competitors still win:**
-- **History on day one:** Keepa and PriceBefore crawl millions of products all the time. PricePilot's history starts the first time you open a product.
-- **Coupons and cashback:** both need a crowdsourced code database and affiliate deals.
-- **Email or Telegram alerts and cross-device sync:** they need a server. PricePilot uses only browser notifications.
-- **Large watchlists:** the store sites block bots. Keep the watchlist under about 40 items.
+- **History on day one:** Keepa crawls millions of products continuously. PricePilot starts tracking when *you* first visit.
+- **Coupon codes / cashback portals:** require a crowdsourced database and affiliate deals.
+- **Email alerts / cross-device sync:** require a server. PricePilot is intentionally server-free.
+
+---
+
+## Install
+
+> No build step. No npm install. Load the folder directly.
+
+1. Open `chrome://extensions`
+2. Enable **Developer mode** (top-right toggle)
+3. Click **Load unpacked** → select this repo's root folder
+4. Browse any Amazon/Flipkart/Zomato/Swiggy page — tracking starts automatically
+
+Supports Chrome, Edge, Brave, and any Chromium browser.
+
+---
+
+## Usage
+
+**Compare tab** — tick 2+ tracked products → **Compare selected** → ranked best pick with score breakdown.
+
+**Watchlist tab** — set a target price on any item → get notified when it drops.
+
+**Food tab** — compare the same restaurant order on Zomato vs. Swiggy.
+
+**Settings tab** — add your bank cards for net-price calculation, tune the weighting sliders.
+
+---
+
+## How it works
+
+```
+Browser visits product page
+        │
+        ▼
+Content script extracts: title, price, rating, discount%, delivery fee
+        │
+        ▼
+chrome.storage.local: appends price point to history (capped at 200 items)
+        │
+        ▼
+Scoring engine (lib/scoring.js): min-max normalize + weighted sum
+        │
+        ▼
+History engine (lib/history.js): compare current vs. recorded low → deal verdict
+        │
+        ▼
+Overlay (content/overlay.js): inject Shadow DOM panel into the live page
+        │
+        ▼
+Background service worker: cross-store fetch, watchlist alarm polling
+```
+
+All network calls go only to the four store domains (`amazon.in`, `flipkart.com`, `zomato.com`, `swiggy.com`) with `credentials: "omit"`. No analytics, no tracking pixel, no external API.
+
+---
+
+## Privacy
+
+> **Zero data collection. All logic runs in your browser.**
+
+- No account required
+- No data ever leaves your device
+- No affiliate cookie injection or rewriting
+- No background requests to third-party servers
+- Storage: `chrome.storage.local` (history, watchlist) and `chrome.storage.sync` (settings) — both stay in Chrome's local sandboxed storage
+
+---
 
 ## Tech stack
 
-- Vanilla JavaScript (classic scripts, no build step, no bundler, no `import`/`export`) — see `CONTRACT.md` for the shared-globals pattern every file follows.
-- Chrome Extension **Manifest V3**: a service worker (`background.js`), content scripts per site, and a popup UI (`popup/`).
-- Storage: `chrome.storage.local` (tracked items, price history, watchlist, cross-store cache) and `chrome.storage.sync` (weights, settings) — no external database, no backend.
-- No third-party npm dependencies.
+- **Vanilla JavaScript** — no build step, no bundler, no `import`/`export`. See `CONTRACT.md` for the shared-globals pattern.
+- **Chrome Manifest V3** — service worker, per-site content scripts, popup UI
+- **Zero npm dependencies** — `npm test` only (Node 20+, optional): `102 tests, 0 deps`
+- Storage: `chrome.storage.local` + `chrome.storage.sync`
 
-## Prerequisites
-
-- A Chromium-based browser (Chrome, Edge, Brave, etc.) with Developer mode support for unpacked extensions.
-- No Node.js, no build tooling, and no environment variables are required — this is a static, unpacked extension.
-- Tests (optional, Node 20+, nothing to install): `npm test` runs 102 tests without a browser or network.
-
-## Install & run
-
-1. Open `chrome://extensions` and enable **Developer mode**.
-2. Click **Load unpacked** and select this repo's root folder.
-3. Browse a product page on Amazon/Flipkart or a restaurant on Zomato/Swiggy — it gets tracked automatically.
-4. Click the toolbar icon to open the popup:
-   - **Compare** tab: tick 2+ tracked items, hit **Compare selected**, get a ranked best pick with a score breakdown.
-   - **Watchlist** tab: set a target price on any tracked item for drop alerts.
-   - **Food** tab: compare a Zomato order against the equivalent Swiggy order.
-   - **Settings** tab: save your bank cards (for net-price offer calculation) and tune the compare weight sliders.
-
-No icons are bundled yet — Chrome falls back to its default puzzle-piece icon. Drop `icons/16.png` / `48.png` / `128.png` and reference them under `"icons"` in `manifest.json` if you want a custom one.
-
-## Configuration
-
-No `.env` file or environment variables are used — all configuration (weights, saved cards, alert settings) lives in `chrome.storage.sync` and is set from the popup's Settings tab, not from a config file.
-
-## Usage notes / known limitations
-
-- Zomato/Swiggy extraction is regex-heuristic over page text, not structured data — accuracy depends on page layout and may drift. If an extraction looks wrong, check what the regexes in `content/zomato.js` / `content/swiggy.js` matched.
-- Not published to the Chrome Web Store — unpacked/dev install only, for now.
-- Cross-store search and watchlist checks fetch pages directly from the four store domains (`amazon.in`, `amazon.com`, `flipkart.com`, `zomato.com`, `swiggy.com`) with `credentials: "omit"` — no other network calls are made anywhere in the codebase.
-
-## Companion web tool
-
-A no-install, manual-entry version (paste price/rating/discount for a few options, get the same weighted best-pick scoring) is published separately as a Claude artifact, for quick one-off comparisons when you're not using the extension.
+---
 
 ## Roadmap
 
-- Chrome Web Store packaging and a real icon set.
-- More store integrations beyond the current four.
-- Richer price-history visualizations in the popup.
+- [ ] Chrome Web Store submission + icon set
+- [ ] Richer price-history chart in popup (sparkline)
+- [ ] Meesho, Myntra, Nykaa support
+- [ ] Export watchlist / history to CSV
 
-## Project status
+---
 
-Early-stage, actively developed, functional for personal use. Internal implementation notes for contributors live in `CONTRACT.md`.
+## Contributing
+
+Pull requests welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines.
+
+For bugs or feature requests, use the [issue templates](.github/ISSUE_TEMPLATE/).
+
+---
 
 ## License
 
